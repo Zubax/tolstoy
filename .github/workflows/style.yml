@@ -1,7 +1,7 @@
 name: Style
 on: [ push, pull_request ]
 env:
-  LLVM_VERSION: 18
+  LLVM_VERSION: 20
 
 jobs:
   clang-format:

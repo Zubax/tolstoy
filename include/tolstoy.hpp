@@ -366,39 +366,33 @@ constexpr bool is_string = IsString<std::decay_t<T>>::value;
 // --------------------------------------------------------------------------------------------------------------------
 
 template <std::size_t A, std::size_t B>
-[[nodiscard]] bool
-operator==(const String<A>& lhs, const String<B>& rhs) noexcept
+[[nodiscard]] bool operator==(const String<A>& lhs, const String<B>& rhs) noexcept
 {
     return static_cast<std::string_view>(lhs) == static_cast<std::string_view>(rhs);
 }
 template <std::size_t B>
-[[nodiscard]] bool
-operator==(const char* const lhs, const String<B>& rhs) noexcept
+[[nodiscard]] bool operator==(const char* const lhs, const String<B>& rhs) noexcept
 {
     return static_cast<std::string_view>(lhs) == static_cast<std::string_view>(rhs);
 }
 template <std::size_t A>
-[[nodiscard]] bool
-operator==(const String<A>& lhs, const char* const rhs) noexcept
+[[nodiscard]] bool operator==(const String<A>& lhs, const char* const rhs) noexcept
 {
     return static_cast<std::string_view>(lhs) == static_cast<std::string_view>(rhs);
 }
 
 template <std::size_t A, std::size_t B>
-[[nodiscard]] auto
-operator<=>(const String<A>& lhs, const String<B>& rhs) noexcept
+[[nodiscard]] auto operator<=>(const String<A>& lhs, const String<B>& rhs) noexcept
 {
     return static_cast<std::string_view>(lhs) <=> static_cast<std::string_view>(rhs);
 }
 template <std::size_t B>
-[[nodiscard]] auto
-operator<=>(const char* const lhs, const String<B>& rhs) noexcept
+[[nodiscard]] auto operator<=>(const char* const lhs, const String<B>& rhs) noexcept
 {
     return static_cast<std::string_view>(lhs) <=> static_cast<std::string_view>(rhs);
 }
 template <std::size_t A>
-[[nodiscard]] auto
-operator<=>(const String<A>& lhs, const char* const rhs) noexcept
+[[nodiscard]] auto operator<=>(const String<A>& lhs, const char* const rhs) noexcept
 {
     return static_cast<std::string_view>(lhs) <=> static_cast<std::string_view>(rhs);
 }
@@ -407,39 +401,34 @@ operator<=>(const String<A>& lhs, const char* const rhs) noexcept
 // NOSONARBEGIN Sonar analysis breaks here producing loads of false positives, so we disable it completely here.
 
 template <std::size_t C>
-String<C>&
-operator<<(String<C>& str, const std::string_view x) noexcept
+String<C>& operator<<(String<C>& str, const std::string_view x) noexcept
 {
     str += x;
     return str;
 }
 
 template <std::size_t C>
-String<C>&
-operator<<(String<C>& str, const char* const x) noexcept
+String<C>& operator<<(String<C>& str, const char* const x) noexcept
 {
     str += x;
     return str;
 }
 
 template <std::size_t C, std::size_t Z> // This explicit overload is needed to avoid matching on std::ranges::range.
-String<C>&
-operator<<(String<C>& str, const String<Z>& x) noexcept
+String<C>& operator<<(String<C>& str, const String<Z>& x) noexcept
 {
     return str << static_cast<std::string_view>(x);
 }
 
 template <std::size_t C, std::integral T>
-String<C>&
-operator<<(String<C>& str, const T& x)
+String<C>& operator<<(String<C>& str, const T& x)
 {
     str += IntAsString<T>(x);
     return str;
 }
 
 template <std::size_t C, std::floating_point T>
-String<C>&
-operator<<(String<C>& str, const T& x)
+String<C>& operator<<(String<C>& str, const T& x)
 {
     str += (FloatAsString<T>(x));
     return str;
@@ -447,16 +436,14 @@ operator<<(String<C>& str, const T& x)
 
 template <std::size_t C, typename T>
     requires std::is_enum_v<T>
-String<C>&
-operator<<(String<C>& str, const T& x)
+String<C>& operator<<(String<C>& str, const T& x)
 {
     str << static_cast<std::underlying_type_t<T>>(x);
     return str;
 }
 
 template <std::size_t C>
-String<C>&
-operator<<(String<C>& str, const volatile void* const x) noexcept // NOSONAR void*
+String<C>& operator<<(String<C>& str, const volatile void* const x) noexcept // NOSONAR void*
 {
     str += '0';
     str += 'x';
@@ -466,8 +453,7 @@ operator<<(String<C>& str, const volatile void* const x) noexcept // NOSONAR voi
 }
 
 template <std::size_t C, typename Rep, typename Period>
-String<C>&
-operator<<(String<C>& str, const std::chrono::duration<Rep, Period>& x)
+String<C>& operator<<(String<C>& str, const std::chrono::duration<Rep, Period>& x)
 {
     const auto s = std::chrono::duration_cast<std::chrono::seconds>(x);
     str << s.count() << ".";
@@ -483,16 +469,14 @@ operator<<(String<C>& str, const std::chrono::duration<Rep, Period>& x)
 }
 
 template <std::size_t C, typename Clock, typename Dur>
-String<C>&
-operator<<(String<C>& str, const std::chrono::time_point<Clock, Dur>& x)
+String<C>& operator<<(String<C>& str, const std::chrono::time_point<Clock, Dur>& x)
 {
     str << x.time_since_epoch();
     return str;
 }
 
 template <std::size_t C, std::ranges::range R>
-String<C>&
-operator<<(String<C>& str, const R& x)
+String<C>& operator<<(String<C>& str, const R& x)
 {
     str += '[';
     for (bool first = true; const auto& it : x) {
@@ -507,8 +491,7 @@ operator<<(String<C>& str, const R& x)
 }
 
 template <std::size_t C, typename... A>
-String<C>&
-operator<<(String<C>& str, const std::tuple<A...>& x)
+String<C>& operator<<(String<C>& str, const std::tuple<A...>& x)
 {
     str += '(';
     if constexpr (sizeof...(A) > 0) {
@@ -524,15 +507,13 @@ operator<<(String<C>& str, const std::tuple<A...>& x)
 }
 
 template <std::size_t C, typename... A>
-String<C>&
-operator<<(String<C>& str, const std::variant<A...>& x)
+String<C>& operator<<(String<C>& str, const std::variant<A...>& x)
 {
     return std::visit([&str](const auto& val) -> String<C>& { return str << val; }, x);
 }
 
 template <std::size_t C, typename Left, typename Right>
-String<C>&
-operator<<(String<C>& str, const std::pair<Left, Right>& x)
+String<C>& operator<<(String<C>& str, const std::pair<Left, Right>& x)
 {
     str += '(';
     str << x.first;
@@ -543,8 +524,7 @@ operator<<(String<C>& str, const std::pair<Left, Right>& x)
 }
 
 template <std::size_t C, typename M>
-String<C>&
-operator<<(String<C>& str, const std::optional<M>& x)
+String<C>& operator<<(String<C>& str, const std::optional<M>& x)
 {
     if (x.has_value()) {
         str << x.value();
@@ -558,8 +538,7 @@ template <std::size_t C, typename M>
         { m.rows() } -> std::integral;
         { m.cols() } -> std::integral;
     }
-String<C>&
-operator<<(String<C>& str, const M& matrix)
+String<C>& operator<<(String<C>& str, const M& matrix)
 {
     using Idx = decltype(std::declval<M>().rows() + std::declval<M>().cols());
     str += '[';
@@ -587,8 +566,7 @@ operator<<(String<C>& str, const M& matrix)
 /// This will not work if the value is not representable in the native type.
 template <std::size_t C, typename T>
     requires((!std::is_arithmetic_v<T>) && std::numeric_limits<std::decay_t<T>>::is_specialized) //
-String<C>&
-operator<<(String<C>& str, const T& x)
+String<C>& operator<<(String<C>& str, const T& x)
 {
     if constexpr (std::numeric_limits<T>::is_integer && std::numeric_limits<T>::is_signed) {
         str << static_cast<std::intmax_t>(x);
@@ -606,16 +584,14 @@ operator<<(String<C>& str, const T& x)
 /// A helper that constructs a String<N> and formats the specified arguments into it using operator<<.
 /// Users can therefore customize formatting for their types by overloading operator<<.
 template <std::size_t N, typename... A>
-[[nodiscard]] String<N>
-format(A&&... ar)
+[[nodiscard]] String<N> format(A&&... ar)
 {
     String<N> sb;
     (sb << ... << std::forward<A>(ar));
     return sb;
 }
 template <std::size_t N, typename... A>
-[[nodiscard]] String<N>
-formatln(A&&... ar)
+[[nodiscard]] String<N> formatln(A&&... ar)
 {
     return format<N>(std::forward<A>(ar)..., "\n");
 }

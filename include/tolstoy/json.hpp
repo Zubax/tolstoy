@@ -71,8 +71,7 @@ class FinalizerLiteral final
 };
 
 /// Returns an escape sequence for the character; empty string if no escape is needed.
-[[nodiscard]] constexpr std::string_view
-escape(const char ch) noexcept
+[[nodiscard]] constexpr std::string_view escape(const char ch) noexcept
 {
     using namespace std::literals; // NOSONAR acceptable use for a using directive.
     switch (ch) { // clang-format off
@@ -276,8 +275,7 @@ class JsonObject final
     bool                                        first_ = true;
 };
 
-[[nodiscard]] inline JsonObject
-JsonValue::object() && noexcept
+[[nodiscard]] inline JsonObject JsonValue::object() && noexcept
 {
     fin_.disarm();
     return JsonObject(em_);
@@ -324,8 +322,7 @@ class JsonArray final
     bool                                        first_ = true;
 };
 
-[[nodiscard]] inline JsonArray
-JsonValue::array() && noexcept
+[[nodiscard]] inline JsonArray JsonValue::array() && noexcept
 {
     fin_.disarm();
     return JsonArray(em_);
@@ -451,8 +448,7 @@ Json(WriterFn) -> Json<WriterFn>;
 
 // primitives
 
-[[nodiscard]] inline bool
-json_from(JsonValue&& into, const std::string_view x)
+[[nodiscard]] inline bool json_from(JsonValue&& into, const std::string_view x)
 {
     if (!into.emit_raw("\"")) {
         return false;
@@ -471,23 +467,20 @@ json_from(JsonValue&& into, const std::string_view x)
     return std::move(into).emit_raw("\"");
 }
 
-[[nodiscard]] inline bool
-json_from(JsonValue&& into, const char* const x) // NOSONAR array to pointer decay
+[[nodiscard]] inline bool json_from(JsonValue&& into, const char* const x) // NOSONAR array to pointer decay
 {
     return json_from(std::move(into), std::string_view(x));
 }
 
 template <detail::number T>
-[[nodiscard]] bool
-json_from(JsonValue&& into, const T x)
+[[nodiscard]] bool json_from(JsonValue&& into, const T x)
 {
     return std::move(into).emit_raw(detail::NumberAsString(x));
 }
 
 template <typename E>
     requires std::is_enum_v<E>
-[[nodiscard]] bool
-json_from(JsonValue&& into, const E x)
+[[nodiscard]] bool json_from(JsonValue&& into, const E x)
 {
     return json_from(std::move(into), static_cast<std::underlying_type_t<E>>(x));
 }
@@ -495,16 +488,14 @@ json_from(JsonValue&& into, const E x)
 // chrono
 
 template <typename Rep, typename Period>
-[[nodiscard]] bool
-json_from(JsonValue&& into, const std::chrono::duration<Rep, Period>& x)
+[[nodiscard]] bool json_from(JsonValue&& into, const std::chrono::duration<Rep, Period>& x)
 {
     tolstoy::String<16> s;
     return std::move(into).emit_raw(s << x);
 }
 
 template <typename Clock, typename Dur>
-[[nodiscard]] bool
-json_from(JsonValue&& into, const std::chrono::time_point<Clock, Dur>& x)
+[[nodiscard]] bool json_from(JsonValue&& into, const std::chrono::time_point<Clock, Dur>& x)
 {
     return json_from(std::move(into), x.time_since_epoch());
 }
@@ -517,8 +508,7 @@ template <typename M>
         { m.rows() } -> std::integral;
         { m.cols() } -> std::integral;
     }
-[[nodiscard]] bool
-json_from(JsonValue&& into, const M& x)
+[[nodiscard]] bool json_from(JsonValue&& into, const M& x)
 {
     using Idx       = decltype(std::declval<M>().rows() + std::declval<M>().cols());
     JsonArray outer = std::move(into).array();
@@ -541,29 +531,25 @@ json_from(JsonValue&& into, const M& x)
 
 // variant, optional
 
-[[nodiscard]] inline bool
-json_from(JsonValue&& into, const std::monostate)
+[[nodiscard]] inline bool json_from(JsonValue&& into, const std::monostate)
 {
     return std::move(into).emit_raw(JsonValue::literal_null);
 }
 
-[[nodiscard]] inline bool
-json_from(JsonValue&& into, const std::nullopt_t)
+[[nodiscard]] inline bool json_from(JsonValue&& into, const std::nullopt_t)
 {
     return json_from(std::move(into), std::monostate{});
 }
 
 template <typename... Ts>
     requires(sizeof...(Ts) > 0) && (is_json_serializable<Ts> && ...)
-[[nodiscard]] bool
-json_from(JsonValue&& into, const std::variant<Ts...>& x)
+[[nodiscard]] bool json_from(JsonValue&& into, const std::variant<Ts...>& x)
 {
     return std::visit([&into](const auto& v) -> bool { return json_from(std::move(into), v); }, x);
 }
 
 template <json_serializable T>
-[[nodiscard]] bool
-json_from(JsonValue&& into, const std::optional<T>& x)
+[[nodiscard]] bool json_from(JsonValue&& into, const std::optional<T>& x)
 {
     return x ? json_from(std::move(into), *x) : json_from(std::move(into), std::monostate{});
 }
@@ -572,23 +558,20 @@ json_from(JsonValue&& into, const std::optional<T>& x)
 
 template <std::ranges::range R>
     requires(is_json_serializable<std::iter_reference_t<std::ranges::iterator_t<R>>> && (!is_string<R>))
-[[nodiscard]] bool
-json_from(JsonValue&& into, R&& range)
+[[nodiscard]] bool json_from(JsonValue&& into, R&& range)
 {
     JsonArray arr = std::move(into).array(); // NOLINT(*-const-correctness)  No, it cannot be const.
     return std::ranges::all_of(std::forward<R>(range), [&arr]<typename T>(T&& x) { return arr(std::forward<T>(x)); });
 }
 
 template <json_serializable T>
-[[nodiscard]] bool
-json_from(JsonValue&& into, const std::initializer_list<T> x)
+[[nodiscard]] bool json_from(JsonValue&& into, const std::initializer_list<T> x)
 {
     return json_from(std::move(into), std::span{ x });
 }
 
 template <typename... Ts>
-[[nodiscard]] bool
-json_from(JsonValue&& into, const std::tuple<Ts...>& x)
+[[nodiscard]] bool json_from(JsonValue&& into, const std::tuple<Ts...>& x)
 {
     JsonArray arr = std::move(into).array(); // NOLINT(*-const-correctness)  No, it cannot be const.
     return std::apply(

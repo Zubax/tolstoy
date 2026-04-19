@@ -480,8 +480,7 @@ struct CustomType
 };
 
 template <typename stream>
-stream&
-operator<<(stream& s, const CustomType& value)
+stream& operator<<(stream& s, const CustomType& value)
 {
     return s << "custom(" << value.value << ")";
 }
