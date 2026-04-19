@@ -127,8 +127,7 @@ struct MatrixLike final
     [[nodiscard]] int   cols() const noexcept { return cols_; }
     [[nodiscard]] int   operator()(const int r, const int c) const noexcept
     {
-        return data_.at((static_cast<std::size_t>(r) * static_cast<std::size_t>(cols_)) +
-                        static_cast<std::size_t>(c));
+        return data_.at((static_cast<std::size_t>(r) * static_cast<std::size_t>(cols_)) + static_cast<std::size_t>(c));
     }
 };
 

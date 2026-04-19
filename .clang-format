@@ -4,7 +4,6 @@ ColumnLimit: 120
 Standard: Latest
 IndentExternBlock: NoIndent
 AlwaysBreakAfterDefinitionReturnType: None
-BreakAfterReturnType: None
 SpaceAfterTemplateKeyword: true
 AllowShortFunctionsOnASingleLine: All
 AlignConsecutiveAssignments: true
