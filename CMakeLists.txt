@@ -4,7 +4,7 @@
 cmake_minimum_required(VERSION 3.20)
 project(tolstoy CXX)
 
-set(CMAKE_CXX_STANDARD 23)
+set(CMAKE_CXX_STANDARD 20)
 set(CMAKE_CXX_EXTENSIONS OFF)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 
@@ -15,7 +15,7 @@ target_include_directories(tolstoy INTERFACE
     $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/include>
     $<INSTALL_INTERFACE:include>
 )
-target_compile_features(tolstoy INTERFACE cxx_std_23)
+target_compile_features(tolstoy INTERFACE cxx_std_20)
 
 # Tests are built by default when Tolstoy is the top-level project; disabled when consumed as a subdir.
 if(NOT DEFINED PROJECT_IS_TOP_LEVEL)

@@ -3,9 +3,9 @@
 [![CI](https://github.com/Zubax/tolstoy/actions/workflows/ci.yml/badge.svg)](https://github.com/Zubax/tolstoy/actions/workflows/ci.yml)
 [![Style](https://github.com/Zubax/tolstoy/actions/workflows/style.yml/badge.svg)](https://github.com/Zubax/tolstoy/actions/workflows/style.yml)
 [![License: MIT](https://img.shields.io/badge/license-MIT-green.svg)](LICENSE)
-[![Standard: C++23](https://img.shields.io/badge/standard-C%2B%2B23-blue.svg)](https://en.cppreference.com/w/cpp/23)
+[![Standard: C++20](https://img.shields.io/badge/standard-C%2B%2B20-blue.svg)](https://en.cppreference.com/w/cpp/20)
 
-**Tolstoy** is a header-only C++23 string and formatting library for deeply embedded systems.
+**Tolstoy** is a header-only C++20 string and formatting library for deeply embedded systems.
 The `tolstoy::String<N>` class holds an N-byte buffer internally.
 There is no heap allocation, no exceptions, no RTTI, and no macros.
 Tolstoy has no dependencies outside of a small subset of the C++ standard library.
@@ -96,8 +96,9 @@ JSON can serialize anything that `String::operator<<` can, including ADL customi
 ```cpp
 #include <tolstoy/json.hpp>
 
-std::string out;
-auto writer = [&](std::string_view x) -> bool { out.append(x); return true; };
+// Fixed-capacity sink -- no heap. Use std::string instead if you don't mind allocation.
+tolstoy::String<512> out;
+auto writer = [&](std::string_view x) -> bool { out += x; return !out.full(); };
 
 tolstoy::json::Json j(writer);
 if (auto obj = j.object())
@@ -105,14 +106,16 @@ if (auto obj = j.object())
     (void) obj->operator()("name",  "tolstoy");
     (void) obj->operator()("vers",  1);
     (void) obj->operator()("empty", std::nullopt);
-    (void) obj->operator()("tags",  std::array{"text", "embedded", "c++23"});
+    (void) obj->operator()("tags",  std::array{"text", "embedded", "c++20"});
 }
-// out == R"({"name":"tolstoy","vers":1,"empty":null,"tags":["text","embedded","c++23"]})"
+// out == R"({"name":"tolstoy","vers":1,"empty":null,"tags":["text","embedded","c++20"]})"
 ```
 
 JSON-lines is natural: every use of `++j` starts a fresh document separated by a newline.
 
 ```cpp
+tolstoy::String<64> out;
+auto writer = [&](std::string_view x) -> bool { out += x; return !out.full(); };
 tolstoy::json::Json j(writer);
 (void) j++.value()(std::array{1, 2, 3});
 (void) j++.value()(std::array{"a", "b"});
@@ -133,8 +136,8 @@ inline bool json_from(tolstoy::json::JsonValue&& into, const Point& p)
 }
 }  // namespace myapp
 
-std::string out;
-tolstoy::json::Json j([&](std::string_view x) { out.append(x); return true; });
+tolstoy::String<64> out;  // Or std::string, if heap is OK.
+tolstoy::json::Json j([&](std::string_view x) { out += x; return !out.full(); });
 (void) j++.value()(myapp::Point{3, 4});
 // out == R"({"x":3,"y":4})"
 ```
@@ -144,8 +147,8 @@ tolstoy::json::Json j([&](std::string_view x) { out.append(x); return true; });
 ```cpp
 #include <tolstoy/tsv.hpp>
 
-std::string out;
-auto writer = [&](std::string_view x) -> bool { out.append(x); return true; };
+tolstoy::String<256> out;  // Or std::string, if heap is OK.
+auto writer = [&](std::string_view x) -> bool { out += x; return !out.full(); };
 
 auto tsv = tolstoy::tsv::Tsv<4, decltype(writer)>::make(
                std::move(writer),
@@ -161,15 +164,30 @@ auto tsv = tolstoy::tsv::Tsv<4, decltype(writer)>::make(
 
 The column count is a template parameter; `row(...)` validates it at compile time.
 
-### Embedded use (no `std::function`)
+### Embedded use — prefer `ramen::Function<>` over `std::function`
 
-The JSON and TSV writers accept any callable with signature `bool(std::string_view)`.
-The default is `std::function<>`, which may allocate on the heap for large captures.
-To avoid that, you have the option to pass a lambda directly (CTAD deduces the lambda's type),
-use [`ramen::Function<>`](https://github.com/Zubax/ramen),
-or supply your own function wrapper as the `WriterFn` template parameter.
+The JSON and TSV writers accept any callable with signature `bool(std::string_view)` as
+their `WriterFn` template parameter. The default is `std::function<>`, which may allocate
+on the heap for captures that don't fit in its small-buffer optimisation — a deal-breaker
+for deeply embedded targets.
+
+The recommended alternative is [**`ramen::Function<>`**](https://github.com/Zubax/ramen),
+a fixed-footprint type-erased callable from the same family of Zubax embedded utilities.
+It has a static storage size you choose at instantiation and will refuse to compile
+(rather than silently heap-allocate) if a target doesn't fit. Pair it with Tolstoy like this:
+
+```cpp
+#include <tolstoy/json.hpp>
+#include <ramen/ramen.hpp>
+
+using Writer = ramen::Function<bool(std::string_view), sizeof(void*) * 8>;
+tolstoy::json::Json<Writer> j([](std::string_view s) -> bool { return serial_write(s); });
+```
+
+Or, when the writer is a simple lambda, let CTAD deduce the lambda's own type — this gives
+you the tightest possible footprint (no type erasure at all):
 
 ```cpp
 auto writer = [](std::string_view s) -> bool { serial_write(s); return true; };
-tolstoy::json::Json j(writer);   // WriterFn deduced to the lambda's type; no std::function
+tolstoy::json::Json j(writer);   // WriterFn = decltype(writer); no std::function, no heap
 ```
