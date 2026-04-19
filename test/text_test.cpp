@@ -1,7 +1,7 @@
 // Copyright (c)  Zubax Robotics  <zubax.com>
 // Author: Pavel Kirienko <pavel.kirienko@zubax.com>
 
-#include <tolstoy.hpp>
+#include <tolstoy/tolstoy.hpp>
 
 #include "doctest.h"
 

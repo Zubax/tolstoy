@@ -16,11 +16,11 @@ The string operators are extensible via ADL.
 
 ## Headers and namespaces
 
-| Header                       | Namespace       | Purpose                                              |
-|------------------------------|-----------------|------------------------------------------------------|
-| `#include <tolstoy.hpp>`     | `tolstoy`       | `String<N>`, `format<N>`, `operator<<`               |
-| `#include <tolstoy/json.hpp>`| `tolstoy::json` | Streaming JSON writer with ADL customization         |
-| `#include <tolstoy/tsv.hpp>` | `tolstoy::tsv`  | Streaming TSV writer with compile-time column count  |
+| Header                           | Namespace       | Purpose                                              |
+|----------------------------------|-----------------|------------------------------------------------------|
+| `#include <tolstoy/tolstoy.hpp>` | `tolstoy`       | `String<N>`, `format<N>`, `operator<<`               |
+| `#include <tolstoy/json.hpp>`    | `tolstoy::json` | Streaming JSON writer with ADL customization         |
+| `#include <tolstoy/tsv.hpp>`     | `tolstoy::tsv`  | Streaming TSV writer with compile-time column count  |
 
 ## Installation
 

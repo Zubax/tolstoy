@@ -3,7 +3,7 @@
 
 #pragma once
 
-#include <tolstoy.hpp>
+#include <tolstoy/tolstoy.hpp>
 #include <algorithm>
 #include <span>
 #include <concepts>
