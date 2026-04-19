@@ -1,0 +1,53 @@
+name: Style
+on: [ push, pull_request ]
+env:
+  LLVM_VERSION: 18
+
+jobs:
+  clang-format:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install clang-format  # language=bash
+        run: |
+          wget -O llvm.sh https://apt.llvm.org/llvm.sh
+          sudo bash llvm.sh $LLVM_VERSION
+          sudo apt-get -y install clang-format-$LLVM_VERSION
+          sudo ln -fs /usr/bin/clang-format-$LLVM_VERSION /usr/bin/clang-format
+          clang-format --version
+
+      - name: Check formatting  # language=bash
+        run: |
+          shopt -s globstar nullglob
+          files=(include/**/*.hpp test/text_test.cpp test/json_test.cpp test/tsv_test.cpp test/main.cpp)
+          clang-format --dry-run --Werror -fallback-style=none -style=file --verbose "${files[@]}"
+
+  clang-tidy:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install tools  # language=bash
+        run: |
+          wget -O llvm.sh https://apt.llvm.org/llvm.sh
+          sudo bash llvm.sh $LLVM_VERSION
+          sudo apt-get -y install clang-tidy-$LLVM_VERSION
+          sudo ln -fs /usr/bin/clang-$LLVM_VERSION       /usr/bin/clang
+          sudo ln -fs /usr/bin/clang++-$LLVM_VERSION     /usr/bin/clang++
+          sudo ln -fs /usr/bin/clang-tidy-$LLVM_VERSION  /usr/bin/clang-tidy
+          clang-tidy --version
+
+      - name: Configure  # language=bash
+        run: >
+          cmake
+          -B build
+          -DCMAKE_BUILD_TYPE=Debug
+          -DCMAKE_C_COMPILER=clang
+          -DCMAKE_CXX_COMPILER=clang++
+          -DCMAKE_EXPORT_COMPILE_COMMANDS=ON
+
+      - name: Run clang-tidy  # language=bash
+        run: |
+          clang-tidy -p build --warnings-as-errors='*' \
+            test/text_test.cpp test/json_test.cpp test/tsv_test.cpp

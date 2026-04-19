@@ -1,0 +1,24 @@
+# Minimal relaxed clang-tidy config for Tolstoy. Catches real defects without drowning contributors in noise.
+Checks: >-
+  bugprone-*,
+  cert-*,
+  clang-analyzer-*,
+  misc-*,
+  modernize-*,
+  performance-*,
+  portability-*,
+  readability-*,
+  -bugprone-easily-swappable-parameters,
+  -bugprone-unchecked-optional-access,
+  -misc-include-cleaner,
+  -misc-non-private-member-variables-in-classes,
+  -modernize-use-trailing-return-type,
+  -portability-avoid-pragma-once,
+  -readability-avoid-const-params-in-decls,
+  -readability-function-cognitive-complexity,
+  -readability-identifier-length,
+  -readability-magic-numbers,
+  -readability-named-parameter,
+WarningsAsErrors: '*'
+HeaderFilterRegex: 'tolstoy(/.*)?\.hpp$'
+FormatStyle: file

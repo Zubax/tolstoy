@@ -1,0 +1,17 @@
+BasedOnStyle: Mozilla
+IndentWidth: 4
+ColumnLimit: 120
+Standard: Latest
+IndentExternBlock: NoIndent
+AlwaysBreakAfterDefinitionReturnType: None
+BreakAfterReturnType: None
+SpaceAfterTemplateKeyword: true
+AllowShortFunctionsOnASingleLine: All
+AlignConsecutiveAssignments: true
+AlignConsecutiveBitFields: true
+AlignConsecutiveDeclarations: true
+AlignConsecutiveMacros: true
+AlignConsecutiveShortCaseStatements: { Enabled: true }
+AlignEscapedNewlines: Left
+AlignTrailingComments: true
+SortIncludes: false

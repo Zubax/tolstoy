@@ -1,0 +1,56 @@
+name: CI
+on: [ push, pull_request ]
+env:
+  LLVM_VERSION: 18
+
+jobs:
+  build-and-test:
+    runs-on: ubuntu-24.04
+    strategy:
+      fail-fast: false
+      matrix:
+        cmake_build_type: [ Debug, Release ]
+        toolchain: [ gcc, clang ]
+        flags: [ '-m32', '-m64' ]
+        include:
+          - toolchain: gcc
+            c_compiler: gcc
+            cxx_compiler: g++
+          - toolchain: clang
+            c_compiler: clang
+            cxx_compiler: clang++
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install dependencies  # language=bash
+        run: |
+          wget -O llvm.sh https://apt.llvm.org/llvm.sh
+          chmod +x llvm.sh
+          sudo ./llvm.sh $LLVM_VERSION
+          sudo apt-get -y install gcc-multilib g++-multilib
+          sudo ln -fs /usr/bin/clang-$LLVM_VERSION   /usr/bin/clang
+          sudo ln -fs /usr/bin/clang++-$LLVM_VERSION /usr/bin/clang++
+          clang   --version
+          clang++ --version
+          gcc     --version
+          g++     --version
+          echo "CPU count: $(nproc)"
+
+      - name: Configure
+        run: >
+          cmake
+          -B ${{ github.workspace }}/build
+          -DCMAKE_BUILD_TYPE=${{       matrix.cmake_build_type }}
+          -DCMAKE_C_COMPILER=${{       matrix.c_compiler }}
+          -DCMAKE_CXX_COMPILER=${{     matrix.cxx_compiler }}
+          -DCMAKE_C_FLAGS=${{          matrix.flags }}
+          -DCMAKE_CXX_FLAGS=${{        matrix.flags }}
+          -DCMAKE_EXE_LINKER_FLAGS=${{ matrix.flags }}
+
+      - name: Build
+        working-directory: ${{ github.workspace }}/build
+        run: make -j$(nproc) VERBOSE=1
+
+      - name: Test
+        working-directory: ${{ github.workspace }}/build
+        run: ctest --output-on-failure
