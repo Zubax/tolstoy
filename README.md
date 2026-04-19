@@ -4,73 +4,32 @@
 [![Style](https://github.com/Zubax/tolstoy/actions/workflows/style.yml/badge.svg)](https://github.com/Zubax/tolstoy/actions/workflows/style.yml)
 [![License: MIT](https://img.shields.io/badge/license-MIT-green.svg)](LICENSE)
 [![Standard: C++23](https://img.shields.io/badge/standard-C%2B%2B23-blue.svg)](https://en.cppreference.com/w/cpp/23)
-[![Header-only](https://img.shields.io/badge/header--only-yes-brightgreen.svg)](include/)
 
-**Tolstoy** is a header-only C++23 text-formatting library for deeply embedded systems.
-It does no heap allocation, no exceptions, no RTTI — just fixed-capacity string buffers and
-stream-style formatting, plus optional streaming JSON and TSV writers.
-It has no dependencies outside the C++ standard library.
+**Tolstoy** is a header-only C++23 string and formatting library for deeply embedded systems.
+The `tolstoy::String<N>` class holds an N-byte buffer internally.
+There is no heap allocation, no exceptions, no RTTI, and no macros.
+Tolstoy has no dependencies outside of a small subset of the C++ standard library.
 
-Extracted from [Zubax Dyshlo](https://github.com/Zubax/dyshlo) to be reusable across
-projects that need predictable, allocation-free text output (semihosting logs, test-bench
-dumps, flight recorders).
+JSON and TSV serializers are provided out of the box since these are often useful in semihosted verification suites.
 
-## Highlights
-
-- **Zero heap**: every buffer is a stack-allocated `std::array`. Overflow is silent truncation.
-- **Zero dependencies**: standard library only.
-- **Header-only**: drop `include/` onto your include path and you are done.
-- **Extensible via ADL**: overload `operator<<` (text) or `json_from()` (JSON) for your own types.
-- **Compile-time-checked**: `Tsv<N>` verifies the column count at each `row()` call.
-- **JSON5-friendly floats**: `NaN`, `+Infinity`, `-Infinity` out of the box.
+The string operators are extensible via ADL.
 
 ## Headers and namespaces
 
-| Header                       | Namespace       | Purpose                                  |
-|------------------------------|-----------------|------------------------------------------|
-| `#include <tolstoy.hpp>`     | `tolstoy`       | `IntAsString`, `FloatAsString`, `String<N>`, `format<N>`, `operator<<` |
-| `#include <tolstoy/json.hpp>`| `tolstoy::json` | Streaming JSON writer with ADL customization |
-| `#include <tolstoy/tsv.hpp>` | `tolstoy::tsv`  | Streaming TSV writer with compile-time column count |
+| Header                       | Namespace       | Purpose                                              |
+|------------------------------|-----------------|------------------------------------------------------|
+| `#include <tolstoy.hpp>`     | `tolstoy`       | `String<N>`, `format<N>`, `operator<<`               |
+| `#include <tolstoy/json.hpp>`| `tolstoy::json` | Streaming JSON writer with ADL customization         |
+| `#include <tolstoy/tsv.hpp>` | `tolstoy::tsv`  | Streaming TSV writer with compile-time column count  |
 
 ## Installation
 
-```cmake
-# Add as a subdirectory
-add_subdirectory(tolstoy)
-target_link_libraries(your_target PRIVATE tolstoy::tolstoy)
-```
+Add `tolstoy/include/` to your include path — the library has no built artefacts.
+You can add it as a Git submodule or simply copy the sources.
 
-Or just add `tolstoy/include/` to your include path — the library has no built artefacts.
+## Usage
 
-## Examples
-
-### Integers
-
-```cpp
-#include <tolstoy.hpp>
-using namespace tolstoy;
-
-IntAsString s1(12345);              // "12345"
-IntAsString s2(-42);                // "-42"
-IntAsString<int, 16> s3(0xCAFE);    // "cafe"
-IntAsString<int, 2>  s4(0b1010);    // "1010"
-IntAsString<int, 36> s5(0xDEADBEE); // "3v0mb2" (base-36 uses 0-9a-z)
-IntAsString<int, 62> s6(0xDEADBEE); // "fNIR0"  (base-62 is case-sensitive)
-
-// Every conversion is constexpr, c_str()-friendly, and implicitly convertible to std::string_view.
-std::string_view sv = s1;
-```
-
-### Floats
-
-```cpp
-FloatAsString f1(3.14F);                                 // "+3.14000e+00"
-FloatAsString f2(3.14F, {.explicit_sign = false});       // "3.14000e00"
-FloatAsString f3(std::numeric_limits<float>::infinity());// "+Infinity"
-FloatAsString f4(std::numeric_limits<double>::quiet_NaN()); // "NaN"
-```
-
-### Fixed-capacity strings
+`tolstoy::String<N>` holds the string internally and has a streaming `operator<<`:
 
 ```cpp
 String<64> sb;
@@ -87,7 +46,7 @@ for (char c : tiny) { /* ... */ }
 if (tiny == "this is ") { /* ... */ }
 ```
 
-### `operator<<` knows a lot of types
+`operator<<` knows a lot of types:
 
 ```cpp
 String<256> sb;
@@ -102,7 +61,7 @@ sb << "int="    << 42                                           << "\n"
    << "dur="    << std::chrono::nanoseconds{1'234'567'890}      << "\n";
 ```
 
-### `format<N>` / `formatln<N>`
+Thin helpers `format<N>` / `formatln<N>` are available:
 
 ```cpp
 auto greeting = tolstoy::format<64>("Hello, ", "world! n=", 42);
@@ -111,7 +70,7 @@ auto greeting = tolstoy::format<64>("Hello, ", "world! n=", 42);
 auto line = tolstoy::formatln<64>("x=", 1, " y=", 2);  // trailing "\n"
 ```
 
-### Custom types (ADL)
+Custom types via [argument-dependent lookup (ADL)](https://en.cppreference.com/cpp/language/adl):
 
 ```cpp
 namespace myapp
@@ -131,6 +90,8 @@ sb << "batt=" << myapp::Voltage{12.34F};   // "batt=+1.23400e+01V"
 ```
 
 ### Streaming JSON
+
+JSON can serialize anything that `String::operator<<` can, including ADL customization points:
 
 ```cpp
 #include <tolstoy/json.hpp>
@@ -204,14 +165,11 @@ The column count is a template parameter; `row(...)` validates it at compile tim
 
 The JSON and TSV writers accept any callable with signature `bool(std::string_view)`.
 The default is `std::function<>`, which may allocate on the heap for large captures.
-Pass a lambda directly (CTAD deduces the lambda's type) or supply your own fixed-footprint
-function wrapper as the `WriterFn` template parameter to avoid heap allocation entirely.
+To avoid that, you have the option to pass a lambda directly (CTAD deduces the lambda's type),
+use [`ramen::Function<>`](https://github.com/Zubax/ramen),
+or supply your own function wrapper as the `WriterFn` template parameter.
 
 ```cpp
 auto writer = [](std::string_view s) -> bool { serial_write(s); return true; };
 tolstoy::json::Json j(writer);   // WriterFn deduced to the lambda's type; no std::function
 ```
-
-## License
-
-MIT. See [LICENSE](LICENSE).
