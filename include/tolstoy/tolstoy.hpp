@@ -23,8 +23,7 @@ namespace tolstoy {
 /// Bases above 62 are not supported; an attempt to use them will result in a compile-time error.
 /// The interface of the resulting object is string-like. The instance is movable and copyable.
 template <std::integral T, std::uint8_t radix = 10>
-class IntAsString
-{
+class IntAsString {
     static_assert(radix >= 2);
     // Plus 1 to round up, see the standard for details.
     static constexpr std::uint8_t N =
@@ -40,8 +39,7 @@ class IntAsString
     } };
 
   public:
-    explicit constexpr IntAsString(const T value) noexcept
-    {
+    explicit constexpr IntAsString(const T value) noexcept {
         static_assert(radix <= alphabet.size());
         if constexpr ((2 == std::numeric_limits<T>::radix) && (1 == std::numeric_limits<T>::digits)) {
             --offset_;
@@ -72,10 +70,7 @@ class IntAsString
     [[nodiscard]] constexpr auto max_size() const noexcept -> std::size_t { return N; }
 
     // NOLINTNEXTLINE(google-explicit-constructor,hicpp-explicit-conversions)
-    [[nodiscard]] operator std::string_view() const noexcept // NOSONAR implicit by design
-    {
-        return { c_str(), size() };
-    }
+    [[nodiscard]] operator std::string_view() const noexcept { return { c_str(), size() }; }
 
   private:
     std::uint8_t            offset_ = N;
@@ -86,17 +81,13 @@ class IntAsString
 /// The default format is fixed-length like: "+0.00000e+00"; see options for other options.
 /// Non-finite values are represented to maximize JSON[5] compatibility: "NaN", "Infinity", "-Infinity".
 template <std::floating_point T>
-class FloatAsString
-{
+class FloatAsString {
   public:
-    struct Options final
-    {
-        /// If set, the sign will be always present, even if the value is positive.
+    struct Options final {
         bool explicit_sign = true;
     };
 
-    FloatAsString(const T value, const Options& opt) noexcept
-    {
+    FloatAsString(const T value, const Options& opt) noexcept {
         if (std::isfinite(value)) {
             do_finite(value, opt.explicit_sign);
         } else {
@@ -104,9 +95,7 @@ class FloatAsString
         }
     }
     explicit FloatAsString(const T value) noexcept
-      : FloatAsString(value, Options{})
-    {
-    }
+      : FloatAsString(value, Options{}) {}
 
     [[nodiscard]] auto c_str() const noexcept -> const char* { return &buf_.at(off_); }
     [[nodiscard]] auto data() noexcept -> char* { return &buf_.at(off_); }
@@ -117,14 +106,10 @@ class FloatAsString
     [[nodiscard]] constexpr auto max_size() const noexcept -> std::size_t { return N; }
 
     // NOLINTNEXTLINE(google-explicit-constructor,hicpp-explicit-conversions)
-    [[nodiscard]] operator std::string_view() const noexcept // NOSONAR implicit by design
-    {
-        return { c_str(), size() };
-    }
+    [[nodiscard]] operator std::string_view() const noexcept { return { c_str(), size() }; }
 
   private:
-    void do_finite(const T value, const bool explicit_sign) noexcept
-    {
+    void do_finite(const T value, const bool explicit_sign) noexcept {
         auto [ii, ff, ee]  = split_int_frac_exp(value);
         const char ee_sign = (ee < 0) ? '-' : '+';
         for (auto k = 0U; k < exp_digits; k++) {
@@ -148,8 +133,7 @@ class FloatAsString
         }
     }
 
-    void do_nonfinite(const T value, const bool explicit_sign) noexcept
-    {
+    void do_nonfinite(const T value, const bool explicit_sign) noexcept {
         if ((value > 0) || (value < 0)) {
             push('y'); // JSON5 and Python JSON accept "[+-]Infinity". jq accepts that and other forms as well.
             push('t');
@@ -170,15 +154,13 @@ class FloatAsString
     }
 
     template <typename N>
-    [[nodiscard]] auto next(const N value) noexcept -> N
-    {
-        push(static_cast<char>('0' + std::abs(static_cast<std::int8_t>(value % 10)))); // NOSONAR char arithmetics
+    [[nodiscard]] auto next(const N value) noexcept -> N {
+        push(static_cast<char>('0' + std::abs(static_cast<std::int8_t>(value % 10))));
         return static_cast<N>(value / 10);
     }
 
     [[nodiscard]] static auto split_int_frac_exp(const T& value) noexcept
-      -> std::tuple<std::uint8_t, std::uint64_t, std::int16_t>
-    {
+      -> std::tuple<std::uint8_t, std::uint64_t, std::int16_t> {
         static_assert((log10_ceil(std::numeric_limits<std::uint64_t>::max()) - 1) > std::numeric_limits<T>::digits10,
                       "This floating point type may cause integer overflow during string conversion");
         constexpr auto mul = pow10(std::numeric_limits<T>::digits10 - 1);
@@ -197,14 +179,12 @@ class FloatAsString
         return { static_cast<std::uint8_t>(x / mul), x % mul, e };
     }
 
-    void push(const char sym) noexcept
-    {
+    void push(const char sym) noexcept {
         --off_;
         buf_.at(off_) = sym;
     }
 
-    [[nodiscard]] static constexpr auto pow10(const std::uint8_t p) noexcept -> std::uint64_t
-    {
+    [[nodiscard]] static constexpr auto pow10(const std::uint8_t p) noexcept -> std::uint64_t {
         std::uint64_t pw = 1U;
         for (std::uint8_t k = 0U; k < p; k++) {
             pw *= 10UL;
@@ -212,8 +192,7 @@ class FloatAsString
         return pw;
     }
 
-    [[nodiscard]] static constexpr auto log10_ceil(const std::uint64_t x) noexcept -> std::uint8_t
-    {
+    [[nodiscard]] static constexpr auto log10_ceil(const std::uint64_t x) noexcept -> std::uint8_t {
         std::uint8_t out = 0;
         auto         t   = x;
         while (t > 0) {
@@ -261,16 +240,14 @@ FloatAsString(const T&, const typename FloatAsString<T>::Options&) -> FloatAsStr
 /// or in tolstoy (less desirable).
 /// Then define the formatting behavior in terms of the primitive types supported by String<>.
 template <std::size_t N>
-class String
-{
+class String {
   public:
     String() = default;
     // NOLINTNEXTLINE(google-explicit-constructor,hicpp-explicit-conversions)
-    String(const std::string_view str) noexcept { operator=(str); } // NOSONAR implicit by design
+    String(const std::string_view str) noexcept { operator=(str); }
 
     // NOLINTNEXTLINE(google-explicit-constructor,hicpp-explicit-conversions)
-    String& operator=(const std::string_view other) // NOSONAR implicit by design
-    {
+    String& operator=(const std::string_view other) {
         clear();
         operator+=(other);
         return *this;
@@ -305,25 +282,22 @@ class String
     // NOLINTEND(cppcoreguidelines-pro-bounds-pointer-arithmetic)
 
     // NOLINTNEXTLINE(google-explicit-constructor,hicpp-explicit-conversions)
-    [[nodiscard]] operator std::string_view() const noexcept { return { c_str(), size() }; } // NOSONAR implicit
+    [[nodiscard]] operator std::string_view() const noexcept { return { c_str(), size() }; }
 
     /// Add one character unless the storage is already full, in which case do nothing.
-    void push_back(const char ch) noexcept
-    {
+    void push_back(const char ch) noexcept {
         if (off_ < N) {
             buf_.at(off_) = ch;
             off_++;
         }
     }
-    String& operator+=(const char ch) noexcept
-    {
+    String& operator+=(const char ch) noexcept {
         push_back(ch);
         return *this;
     }
 
     /// Remove the last character unless the string is empty, in which case do nothing.
-    void pop_back() noexcept
-    {
+    void pop_back() noexcept {
         if (off_ > 0) {
             off_--;
             buf_.at(off_) = '\0';
@@ -332,8 +306,7 @@ class String
 
     /// Add the specified bytes to the string without checking their values.
     /// Items that would overflow the buffer are silently truncated.
-    String& operator+=(const std::string_view str) noexcept
-    {
+    String& operator+=(const std::string_view str) noexcept {
         assert(off_ <= N);
         const auto am = std::min(str.size(), N - off_);
         (void)std::memmove(buf_.begin() + off_, str.begin(), am);
@@ -342,8 +315,7 @@ class String
         return *this;
     }
 
-    void clear()
-    {
+    void clear() {
         off_ = 0;
         buf_.fill(0);
     }
@@ -355,106 +327,89 @@ class String
 
 /// Detection trait for String<>.
 template <typename>
-struct IsString : public std::false_type
-{};
+struct IsString : public std::false_type {};
 template <std::size_t N>
-struct IsString<String<N>> : public std::true_type
-{};
+struct IsString<String<N>> : public std::true_type {};
 template <typename T>
 constexpr bool is_string = IsString<std::decay_t<T>>::value;
 
 // --------------------------------------------------------------------------------------------------------------------
 
 template <std::size_t A, std::size_t B>
-[[nodiscard]] bool operator==(const String<A>& lhs, const String<B>& rhs) noexcept
-{
+[[nodiscard]] bool operator==(const String<A>& lhs, const String<B>& rhs) noexcept {
     return static_cast<std::string_view>(lhs) == static_cast<std::string_view>(rhs);
 }
 template <std::size_t B>
-[[nodiscard]] bool operator==(const char* const lhs, const String<B>& rhs) noexcept
-{
+[[nodiscard]] bool operator==(const char* const lhs, const String<B>& rhs) noexcept {
     return static_cast<std::string_view>(lhs) == static_cast<std::string_view>(rhs);
 }
 template <std::size_t A>
-[[nodiscard]] bool operator==(const String<A>& lhs, const char* const rhs) noexcept
-{
+[[nodiscard]] bool operator==(const String<A>& lhs, const char* const rhs) noexcept {
     return static_cast<std::string_view>(lhs) == static_cast<std::string_view>(rhs);
 }
 
 template <std::size_t A, std::size_t B>
-[[nodiscard]] auto operator<=>(const String<A>& lhs, const String<B>& rhs) noexcept
-{
+[[nodiscard]] auto operator<=>(const String<A>& lhs, const String<B>& rhs) noexcept {
     return static_cast<std::string_view>(lhs) <=> static_cast<std::string_view>(rhs);
 }
 template <std::size_t B>
-[[nodiscard]] auto operator<=>(const char* const lhs, const String<B>& rhs) noexcept
-{
+[[nodiscard]] auto operator<=>(const char* const lhs, const String<B>& rhs) noexcept {
     return static_cast<std::string_view>(lhs) <=> static_cast<std::string_view>(rhs);
 }
 template <std::size_t A>
-[[nodiscard]] auto operator<=>(const String<A>& lhs, const char* const rhs) noexcept
-{
+[[nodiscard]] auto operator<=>(const String<A>& lhs, const char* const rhs) noexcept {
     return static_cast<std::string_view>(lhs) <=> static_cast<std::string_view>(rhs);
 }
 
 // --------------------------------------------------------------------------------------------------------------------
-// NOSONARBEGIN Sonar analysis breaks here producing loads of false positives, so we disable it completely here.
 
 template <std::size_t C>
-String<C>& operator<<(String<C>& str, const std::string_view x) noexcept
-{
+String<C>& operator<<(String<C>& str, const std::string_view x) noexcept {
     str += x;
     return str;
 }
 
 template <std::size_t C>
-String<C>& operator<<(String<C>& str, const char* const x) noexcept
-{
+String<C>& operator<<(String<C>& str, const char* const x) noexcept {
     str += x;
     return str;
 }
 
 template <std::size_t C, std::size_t Z> // This explicit overload is needed to avoid matching on std::ranges::range.
-String<C>& operator<<(String<C>& str, const String<Z>& x) noexcept
-{
+String<C>& operator<<(String<C>& str, const String<Z>& x) noexcept {
     return str << static_cast<std::string_view>(x);
 }
 
 template <std::size_t C, std::integral T>
-String<C>& operator<<(String<C>& str, const T& x)
-{
+String<C>& operator<<(String<C>& str, const T& x) {
     str += IntAsString<T>(x);
     return str;
 }
 
 template <std::size_t C, std::floating_point T>
-String<C>& operator<<(String<C>& str, const T& x)
-{
+String<C>& operator<<(String<C>& str, const T& x) {
     str += (FloatAsString<T>(x));
     return str;
 }
 
 template <std::size_t C, typename T>
     requires std::is_enum_v<T>
-String<C>& operator<<(String<C>& str, const T& x)
-{
+String<C>& operator<<(String<C>& str, const T& x) {
     str << static_cast<std::underlying_type_t<T>>(x);
     return str;
 }
 
 template <std::size_t C>
-String<C>& operator<<(String<C>& str, const volatile void* const x) noexcept // NOSONAR void*
-{
+String<C>& operator<<(String<C>& str, const volatile void* const x) noexcept {
     str += '0';
     str += 'x';
     // NOLINTNEXTLINE(cppcoreguidelines-pro-type-reinterpret-cast)
-    str += (IntAsString<std::size_t, 16>(reinterpret_cast<std::size_t>(x))); // NOSONAR pointer to integer
+    str += (IntAsString<std::size_t, 16>(reinterpret_cast<std::size_t>(x)));
     return str;
 }
 
 template <std::size_t C, typename Rep, typename Period>
-String<C>& operator<<(String<C>& str, const std::chrono::duration<Rep, Period>& x)
-{
+String<C>& operator<<(String<C>& str, const std::chrono::duration<Rep, Period>& x) {
     const auto s = std::chrono::duration_cast<std::chrono::seconds>(x);
     str << s.count() << ".";
     const IntAsString     ns(std::abs(std::chrono::duration_cast<std::chrono::nanoseconds>(x - s).count()));
@@ -469,15 +424,13 @@ String<C>& operator<<(String<C>& str, const std::chrono::duration<Rep, Period>& 
 }
 
 template <std::size_t C, typename Clock, typename Dur>
-String<C>& operator<<(String<C>& str, const std::chrono::time_point<Clock, Dur>& x)
-{
+String<C>& operator<<(String<C>& str, const std::chrono::time_point<Clock, Dur>& x) {
     str << x.time_since_epoch();
     return str;
 }
 
 template <std::size_t C, std::ranges::range R>
-String<C>& operator<<(String<C>& str, const R& x)
-{
+String<C>& operator<<(String<C>& str, const R& x) {
     str += '[';
     for (bool first = true; const auto& it : x) {
         if (!first) {
@@ -491,8 +444,7 @@ String<C>& operator<<(String<C>& str, const R& x)
 }
 
 template <std::size_t C, typename... A>
-String<C>& operator<<(String<C>& str, const std::tuple<A...>& x)
-{
+String<C>& operator<<(String<C>& str, const std::tuple<A...>& x) {
     str += '(';
     if constexpr (sizeof...(A) > 0) {
         std::apply(
@@ -507,14 +459,12 @@ String<C>& operator<<(String<C>& str, const std::tuple<A...>& x)
 }
 
 template <std::size_t C, typename... A>
-String<C>& operator<<(String<C>& str, const std::variant<A...>& x)
-{
+String<C>& operator<<(String<C>& str, const std::variant<A...>& x) {
     return std::visit([&str](const auto& val) -> String<C>& { return str << val; }, x);
 }
 
 template <std::size_t C, typename Left, typename Right>
-String<C>& operator<<(String<C>& str, const std::pair<Left, Right>& x)
-{
+String<C>& operator<<(String<C>& str, const std::pair<Left, Right>& x) {
     str += '(';
     str << x.first;
     str += ':';
@@ -524,8 +474,7 @@ String<C>& operator<<(String<C>& str, const std::pair<Left, Right>& x)
 }
 
 template <std::size_t C, typename M>
-String<C>& operator<<(String<C>& str, const std::optional<M>& x)
-{
+String<C>& operator<<(String<C>& str, const std::optional<M>& x) {
     if (x.has_value()) {
         str << x.value();
     }
@@ -538,8 +487,7 @@ template <std::size_t C, typename M>
         { m.rows() } -> std::integral;
         { m.cols() } -> std::integral;
     }
-String<C>& operator<<(String<C>& str, const M& matrix)
-{
+String<C>& operator<<(String<C>& str, const M& matrix) {
     using Idx = decltype(std::declval<M>().rows() + std::declval<M>().cols());
     str += '[';
     const Idx rows = matrix.rows();
@@ -566,8 +514,7 @@ String<C>& operator<<(String<C>& str, const M& matrix)
 /// This will not work if the value is not representable in the native type.
 template <std::size_t C, typename T>
     requires((!std::is_arithmetic_v<T>) && std::numeric_limits<std::decay_t<T>>::is_specialized) //
-String<C>& operator<<(String<C>& str, const T& x)
-{
+String<C>& operator<<(String<C>& str, const T& x) {
     if constexpr (std::numeric_limits<T>::is_integer && std::numeric_limits<T>::is_signed) {
         str << static_cast<std::intmax_t>(x);
     } else if constexpr (std::numeric_limits<T>::is_integer && (!std::numeric_limits<T>::is_signed)) {
@@ -578,21 +525,18 @@ String<C>& operator<<(String<C>& str, const T& x)
     return str;
 }
 
-// NOSONAREND
 // --------------------------------------------------------------------------------------------------------------------
 
 /// A helper that constructs a String<N> and formats the specified arguments into it using operator<<.
 /// Users can therefore customize formatting for their types by overloading operator<<.
 template <std::size_t N, typename... A>
-[[nodiscard]] String<N> format(A&&... ar)
-{
+[[nodiscard]] String<N> format(A&&... ar) {
     String<N> sb;
     (sb << ... << std::forward<A>(ar));
     return sb;
 }
 template <std::size_t N, typename... A>
-[[nodiscard]] String<N> formatln(A&&... ar)
-{
+[[nodiscard]] String<N> formatln(A&&... ar) {
     return format<N>(std::forward<A>(ar)..., "\n");
 }
 

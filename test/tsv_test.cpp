@@ -14,8 +14,7 @@
 namespace tolstoy::test {
 namespace {
 
-TEST_CASE("tsv")
-{
+TEST_CASE("tsv") {
     std::string output;
     auto        sink = [&output](const std::string_view x) -> bool {
         output.append(x);

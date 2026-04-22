@@ -13,8 +13,7 @@
 namespace tolstoy::test {
 namespace {
 
-TEST_CASE("int_as_string")
-{
+TEST_CASE("int_as_string") {
     {
         IntAsString s(3);
         CHECK(s.size() == 1);
@@ -110,8 +109,7 @@ TEST_CASE("int_as_string")
     }
 }
 
-TEST_CASE("float_as_string")
-{
+TEST_CASE("float_as_string") {
     // regular float
     {
         FloatAsString s(0.0F);
@@ -282,8 +280,7 @@ TEST_CASE("float_as_string")
     }
 }
 
-struct DummyClock final
-{
+struct DummyClock final {
     using rep        = std::int64_t;
     using period     = std::ratio<1, 180'000'000>;
     using duration   = std::chrono::duration<rep, period>;
@@ -291,21 +288,18 @@ struct DummyClock final
 };
 
 // A minimal matrix-like type with rows()/cols()/operator()(r,c) to exercise the duck-typed matrix formatter.
-struct MatrixLike final
-{
+struct MatrixLike final {
     int                 rows_;
     int                 cols_;
     std::array<int, 16> data_;
     [[nodiscard]] int   rows() const noexcept { return rows_; }
     [[nodiscard]] int   cols() const noexcept { return cols_; }
-    [[nodiscard]] int   operator()(const int r, const int c) const noexcept
-    {
+    [[nodiscard]] int   operator()(const int r, const int c) const noexcept {
         return data_.at((static_cast<std::size_t>(r) * static_cast<std::size_t>(cols_)) + static_cast<std::size_t>(c));
     }
 };
 
-TEST_CASE("string")
-{
+TEST_CASE("string") {
     {
         const String<2> sb("hui");
         CHECK(sb.size() == 2);
@@ -354,10 +348,7 @@ TEST_CASE("string")
         CHECK(std::string_view{ sb.c_str() } == "9hello32");
     }
     {
-        enum class A : std::uint8_t
-        {
-            Z = 9
-        };
+        enum class A : std::uint8_t { Z = 9 };
         String<200> sb;
         // NOLINTNEXTLINE(cppcoreguidelines-pro-type-reinterpret-cast)
         sb << "ptr=" << reinterpret_cast<int*>(0x1234'5670) << "\n"
@@ -447,8 +438,7 @@ TEST_CASE("string")
     }
 }
 
-TEST_CASE("iterator")
-{
+TEST_CASE("iterator") {
     {
         String<10> sb;
         sb << "hello";
@@ -474,21 +464,18 @@ TEST_CASE("iterator")
     }
 }
 
-struct CustomType
-{
+struct CustomType {
     std::uint8_t value;
 };
 
 template <typename stream>
-stream& operator<<(stream& s, const CustomType& value)
-{
+stream& operator<<(stream& s, const CustomType& value) {
     return s << "custom(" << value.value << ")";
 }
 
 TEST_CASE("format") { CHECK(std::string_view{ formatln<64>(123, CustomType{ 210 }).c_str() } == "123custom(210)\n"); }
 
-TEST_CASE("stream_operator")
-{
+TEST_CASE("stream_operator") {
     {
         String<64> sb;
         sb << "hello" << 123 << " " << CustomType{ 123 };

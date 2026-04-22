@@ -18,11 +18,9 @@ namespace tolstoy::test {
 namespace {
 
 // An in-memory sink that accumulates emitted bytes into a std::string for inspection.
-struct StringSink final
-{
+struct StringSink final {
     std::string buf;
-    auto        writer()
-    {
+    auto        writer() {
         return [this](std::string_view x) -> bool {
             buf.append(x);
             return true;
@@ -30,8 +28,7 @@ struct StringSink final
     }
 };
 
-TEST_CASE("json_api1")
-{
+TEST_CASE("json_api1") {
     // language=json
     constexpr std::string_view ref =
       R"({"dict":{"\"\\\b\f\n\r\t":1,"123":"abc\n","9.87654e00":null},"list":[-1.00000e00,1,true,false,null]})";
@@ -73,8 +70,7 @@ TEST_CASE("json_api1")
     CHECK(sink.buf == ref);
 }
 
-TEST_CASE("json_api2")
-{
+TEST_CASE("json_api2") {
     // language=json
     constexpr std::string_view ref = R"([null,[],{},{"":null}])";
     StringSink                 sink;
@@ -94,8 +90,7 @@ TEST_CASE("json_api2")
     CHECK(sink.buf == ref);
 }
 
-TEST_CASE("json_arrays")
-{
+TEST_CASE("json_arrays") {
     // language=jsonl
     constexpr std::string_view ref = "[1,2,3,4,5]\n"
                                      R"(["a","b","c","d","e"])"
@@ -118,21 +113,18 @@ TEST_CASE("json_arrays")
 }
 
 // A minimal matrix-like type with rows()/cols()/operator()(r,c) to exercise the matrix json_from() overload.
-struct MatrixLike final
-{
+struct MatrixLike final {
     int                 rows_;
     int                 cols_;
     std::array<int, 16> data_;
     [[nodiscard]] int   rows() const noexcept { return rows_; }
     [[nodiscard]] int   cols() const noexcept { return cols_; }
-    [[nodiscard]] int   operator()(const int r, const int c) const noexcept
-    {
+    [[nodiscard]] int   operator()(const int r, const int c) const noexcept {
         return data_.at((static_cast<std::size_t>(r) * static_cast<std::size_t>(cols_)) + static_cast<std::size_t>(c));
     }
 };
 
-TEST_CASE("json_objects")
-{
+TEST_CASE("json_objects") {
     // language=jsonl
     constexpr std::string_view ref = R"({"a":123,"b":null,"c":[[1,2,3],[4,5,6],[7,8,9]],"d":{"e":456}})";
     StringSink                 sink;
@@ -149,8 +141,7 @@ TEST_CASE("json_objects")
     CHECK(sink.buf == ref);
 }
 
-TEST_CASE("json_matrix")
-{
+TEST_CASE("json_matrix") {
     // language=jsonl
     constexpr std::string_view ref = R"([[1,2,3],[4,5,6],[7,8,9]])";
     StringSink                 sink;
@@ -162,8 +153,7 @@ TEST_CASE("json_matrix")
     CHECK(sink.buf == ref);
 }
 
-TEST_CASE("json_scalar_containers")
-{
+TEST_CASE("json_scalar_containers") {
     // language=jsonl
     constexpr std::string_view ref = R"([2,"a",null,3,null])";
     StringSink                 sink;
@@ -179,8 +169,7 @@ TEST_CASE("json_scalar_containers")
     CHECK(sink.buf == ref);
 }
 
-TEST_CASE("json_special_values")
-{
+TEST_CASE("json_special_values") {
     // language=jsonl
     constexpr std::string_view ref = R"({"a":9.123456789,"b":123})";
     StringSink                 sink;
@@ -191,8 +180,7 @@ TEST_CASE("json_special_values")
         CHECK(obj("a",
                   std::chrono::time_point<std::chrono::steady_clock>(
                     std::chrono::duration_cast<std::chrono::steady_clock::duration>(Duration{ 9.123456789 }))));
-        enum class Enum : std::uint8_t
-        {
+        enum class Enum : std::uint8_t {
             a = 234,
             b = 123,
         };

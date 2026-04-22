@@ -20,8 +20,7 @@ class JsonArray;
 namespace detail {
 /// The interface is made move-constructible to avoid limiting the usage options too much.
 /// It is not assignable nor copy-constructible to avoid dangling references in the child emitters: JsonValue, etc.
-class JsonEmitter
-{
+class JsonEmitter {
   public:
     virtual void               backlog(const std::string_view text) noexcept = 0;
     [[nodiscard]] virtual bool emit(const std::string_view text)             = 0;
@@ -38,28 +37,23 @@ class JsonEmitter
 
 /// A minimal RAII helper that emits a fixed literal to the emitter's backlog on destruction unless disarmed.
 /// Replaces a general type-erased finalizer because all three call sites only need to emit a small literal.
-class FinalizerLiteral final
-{
+class FinalizerLiteral final {
   public:
     FinalizerLiteral(JsonEmitter& em, const std::string_view text) noexcept
       : em_(&em)
-      , text_(text)
-    {
-    }
+      , text_(text) {}
     FinalizerLiteral(const FinalizerLiteral&)            = delete;
     FinalizerLiteral& operator=(const FinalizerLiteral&) = delete;
     FinalizerLiteral(FinalizerLiteral&& other) noexcept
       : em_(other.em_)
-      , text_(other.text_)
-    {
+      , text_(other.text_) {
         other.em_ = nullptr;
     }
     FinalizerLiteral& operator=(FinalizerLiteral&&) noexcept = delete;
 
     void disarm() noexcept { em_ = nullptr; }
 
-    ~FinalizerLiteral() noexcept
-    {
+    ~FinalizerLiteral() noexcept {
         if (em_ != nullptr) {
             em_->backlog(text_);
         }
@@ -71,8 +65,7 @@ class FinalizerLiteral final
 };
 
 /// Returns an escape sequence for the character; empty string if no escape is needed.
-[[nodiscard]] constexpr std::string_view escape(const char ch) noexcept
-{
+[[nodiscard]] constexpr std::string_view escape(const char ch) noexcept {
     using namespace std::literals; // NOSONAR acceptable use for a using directive.
     switch (ch) { // clang-format off
             case '"':  { return R"(\")"sv; }
@@ -92,28 +85,19 @@ concept number = std::integral<T> || std::floating_point<T> || std::is_same_v<T,
 template <number T>
 struct NumberAsString;
 template <std::floating_point T>
-struct NumberAsString<T> : public FloatAsString<T>
-{
+struct NumberAsString<T> : public FloatAsString<T> {
     explicit NumberAsString(const T x) noexcept
-      : FloatAsString<T>(x, { .explicit_sign = false })
-    {
-    }
+      : FloatAsString<T>(x, { .explicit_sign = false }) {}
 };
 template <std::integral T>
-struct NumberAsString<T> : public IntAsString<T>
-{
+struct NumberAsString<T> : public IntAsString<T> {
     explicit NumberAsString(const T x) noexcept
-      : IntAsString<T>(x)
-    {
-    }
+      : IntAsString<T>(x) {}
 };
 template <>
-struct NumberAsString<bool>
-{
+struct NumberAsString<bool> {
     explicit NumberAsString(const bool x) noexcept
-      : x_(x)
-    {
-    }
+      : x_(x) {}
     // NOLINTNEXTLINE(google-explicit-constructor,hicpp-explicit-conversions)
     [[nodiscard]] operator std::string_view() const noexcept // NOSONAR implicit by design
     {
@@ -150,8 +134,7 @@ NumberAsString(const T&) -> NumberAsString<T>;
 /// Check the actual json_from() function overloads for the additional information.
 /// Define custom overloads of json_from() in the same namespace as the type of the second argument (not here).
 /// Note that we don't have to forward-declare json_from() because it depends on JsonValue and thus pulled in by ADL.
-class JsonValue final
-{
+class JsonValue final {
     // A few of the json_from() overloads are friends because they implement the primitive serialization that all
     // other overloads depend on: string, number (incl. boolean), and null.
     friend bool json_from(JsonValue&& into, const std::string_view x);
@@ -175,8 +158,7 @@ class JsonValue final
                 json_from(std::move(j), std::forward<T>(x))
             } -> std::same_as<bool>; // NOSONAR T&& is a forwarding reference
         }
-    [[nodiscard]] bool operator()(T&& x) &&
-    {
+    [[nodiscard]] bool operator()(T&& x) && {
         fin_.disarm();
         return json_from(std::move(*this), std::forward<T>(x));
     }
@@ -185,8 +167,7 @@ class JsonValue final
         requires requires(JsonValue&& j, std::initializer_list<T> x) {
             { json_from(std::move(j), x) } -> std::same_as<bool>;
         }
-    [[nodiscard]] bool operator()(const std::initializer_list<T> x) &&
-    {
+    [[nodiscard]] bool operator()(const std::initializer_list<T> x) && {
         fin_.disarm();
         return json_from(std::move(*this), x);
     }
@@ -200,9 +181,7 @@ class JsonValue final
     [[nodiscard]] bool emit_raw(const std::string_view x) { return em_.get().emit(x); } // NOSONAR must not be const
     explicit JsonValue(detail::JsonEmitter& em) noexcept
       : em_(em)
-      , fin_(em, literal_null)
-    {
-    }
+      , fin_(em, literal_null) {}
 
     static constexpr std::string_view           literal_null = "null";
     std::reference_wrapper<detail::JsonEmitter> em_;
@@ -211,8 +190,7 @@ class JsonValue final
 
 /// Anything that can be passed into JsonValue::operator() is considered JSON-serializable.
 template <typename T>
-struct IsJsonSerializable : public std::is_invocable<JsonValue, std::decay_t<T>>
-{};
+struct IsJsonSerializable : public std::is_invocable<JsonValue, std::decay_t<T>> {};
 template <typename T>
 constexpr bool is_json_serializable = IsJsonSerializable<T>::value;
 template <typename T>
@@ -222,8 +200,7 @@ concept json_serializable = is_json_serializable<T>;
 
 /// The instance shall be destroyed before writing next JSON elements to finalize the JSON object properly.
 /// Untimely destruction will result in malformed JSON.
-class JsonObject final
-{
+class JsonObject final {
   public:
     template <typename K, typename T = std::decay_t<K>>
     static constexpr bool is_valid_key = std::is_constructible_v<std::string_view, T> || //
@@ -233,8 +210,7 @@ class JsonObject final
     /// Start a new key/value pair. Empty option represents that the key header could not be written;
     /// further usage of the stream is impossible and the output is likely malformed. Non-string (numeric) keys are
     /// automatically converted to strings.
-    [[nodiscard]] std::optional<JsonValue> operator[](const std::string_view key) &
-    {
+    [[nodiscard]] std::optional<JsonValue> operator[](const std::string_view key) & {
         if ((!first_) && (!em_.get().emit(","))) {
             return std::nullopt;
         }
@@ -247,15 +223,13 @@ class JsonObject final
         }
         return JsonValue(em_);
     }
-    [[nodiscard]] std::optional<JsonValue> operator[](const detail::number auto key) &
-    {
+    [[nodiscard]] std::optional<JsonValue> operator[](const detail::number auto key) & {
         return (*this)[static_cast<std::string_view>(detail::NumberAsString(key))];
     }
     /// A convenience helper to append a single key/value pair to the object.
     template <typename K, json_serializable V>
         requires is_valid_key<K>
-    [[nodiscard]] bool operator()(K&& key, V&& value) &
-    {
+    [[nodiscard]] bool operator()(K&& key, V&& value) & {
         if (auto v = (*this)[std::forward<K>(key)]) {
             return std::move(*v)(std::forward<V>(value));
         }
@@ -266,8 +240,7 @@ class JsonObject final
     friend class JsonValue;
     explicit JsonObject(detail::JsonEmitter& em)
       : em_(em)
-      , fin_(em, "}")
-    {
+      , fin_(em, "}") {
         em_.get().backlog("{");
     }
     std::reference_wrapper<detail::JsonEmitter> em_;
@@ -275,8 +248,7 @@ class JsonObject final
     bool                                        first_ = true;
 };
 
-[[nodiscard]] inline JsonObject JsonValue::object() && noexcept
-{
+[[nodiscard]] inline JsonObject JsonValue::object() && noexcept {
     fin_.disarm();
     return JsonObject(em_);
 }
@@ -285,8 +257,7 @@ class JsonObject final
 
 /// The instance shall be destroyed before writing next JSON elements to finalize the array properly.
 /// Untimely destruction will result in malformed JSON.
-class JsonArray final
-{
+class JsonArray final {
   public:
     /// Start a new array element. Empty option represents that the element separator could not be written;
     /// further usage of the stream is impossible and the output is likely malformed.
@@ -301,8 +272,7 @@ class JsonArray final
     }
     /// A convenience helper to append a single value to the array.
     template <json_serializable V>
-    [[nodiscard]] bool operator()(V&& value) &
-    {
+    [[nodiscard]] bool operator()(V&& value) & {
         if (auto v = (*this)++) {
             return std::move(*v)(std::forward<V>(value));
         }
@@ -313,8 +283,7 @@ class JsonArray final
     friend class JsonValue;
     explicit JsonArray(detail::JsonEmitter& em)
       : em_(em)
-      , fin_(em, "]")
-    {
+      , fin_(em, "]") {
         em_.get().backlog("[");
     }
     std::reference_wrapper<detail::JsonEmitter> em_;
@@ -322,8 +291,7 @@ class JsonArray final
     bool                                        first_ = true;
 };
 
-[[nodiscard]] inline JsonArray JsonValue::array() && noexcept
-{
+[[nodiscard]] inline JsonArray JsonValue::array() && noexcept {
     fin_.disarm();
     return JsonArray(em_);
 }
@@ -345,8 +313,7 @@ class JsonArray final
 /// allocates on the heap for large captures. Embedded users who cannot afford heap allocation should supply
 /// their own fixed-footprint type-erased callable as WriterFn (or pass a lambda directly and rely on CTAD).
 template <typename WriterFn = std::function<bool(std::string_view)>>
-class Json final : private detail::JsonEmitter
-{
+class Json final : private detail::JsonEmitter {
   public:
     /// The JSON writer calls this function to write the data. The function must return true on success, false on error;
     /// once false is returned, further writes will cease and the Json object will stay in the error state forever.
@@ -355,16 +322,13 @@ class Json final : private detail::JsonEmitter
     using Writer = WriterFn;
 
     explicit Json(WriterFn dest) noexcept
-      : dest_(std::move(dest))
-    {
-    }
+      : dest_(std::move(dest)) {}
 
     /// Moving the instance invalidates all child emitters, like JsonValue, JsonObject, etc.
     Json(Json&& other) noexcept
       : backlog_(other.backlog_)
       , dest_(std::move(other.dest_))
-      , first_(other.first_)
-    {
+      , first_(other.first_) {
         other.backlog_.clear();
         other.first_ = true;
     }
@@ -388,8 +352,7 @@ class Json final : private detail::JsonEmitter
     [[nodiscard]] std::optional<JsonValue> operator++() noexcept { return (*this)++; }
 
     /// A helper that returns ++.object() unless the first value() fails.
-    [[nodiscard]] std::optional<JsonObject> object() noexcept
-    {
+    [[nodiscard]] std::optional<JsonObject> object() noexcept {
         if (auto v = ++*this) {
             return std::move(*v).object();
         }
@@ -397,8 +360,7 @@ class Json final : private detail::JsonEmitter
     }
 
     /// A helper that returns ++.array() unless the first value() fails.
-    [[nodiscard]] std::optional<JsonArray> array() noexcept
-    {
+    [[nodiscard]] std::optional<JsonArray> array() noexcept {
         if (auto v = ++*this) {
             return std::move(*v).array();
         }
@@ -414,8 +376,7 @@ class Json final : private detail::JsonEmitter
   private:
     void               backlog(const std::string_view text) noexcept final { backlog_ += text; }
     [[nodiscard]] bool emit(const std::string_view text) final { return flush_backlog() && dest_(text); }
-    [[nodiscard]] bool flush_backlog()
-    {
+    [[nodiscard]] bool flush_backlog() {
         const bool ok = !backlog_.full(); // If full -- backlog overrun, data probably lost, output probably invalid.
         if (!backlog_.empty()) {
             if (dest_(backlog_)) {
@@ -448,8 +409,7 @@ Json(WriterFn) -> Json<WriterFn>;
 
 // primitives
 
-[[nodiscard]] inline bool json_from(JsonValue&& into, const std::string_view x)
-{
+[[nodiscard]] inline bool json_from(JsonValue&& into, const std::string_view x) {
     if (!into.emit_raw("\"")) {
         return false;
     }
@@ -473,30 +433,26 @@ Json(WriterFn) -> Json<WriterFn>;
 }
 
 template <detail::number T>
-[[nodiscard]] bool json_from(JsonValue&& into, const T x)
-{
+[[nodiscard]] bool json_from(JsonValue&& into, const T x) {
     return std::move(into).emit_raw(detail::NumberAsString(x));
 }
 
 template <typename E>
     requires std::is_enum_v<E>
-[[nodiscard]] bool json_from(JsonValue&& into, const E x)
-{
+[[nodiscard]] bool json_from(JsonValue&& into, const E x) {
     return json_from(std::move(into), static_cast<std::underlying_type_t<E>>(x));
 }
 
 // chrono
 
 template <typename Rep, typename Period>
-[[nodiscard]] bool json_from(JsonValue&& into, const std::chrono::duration<Rep, Period>& x)
-{
+[[nodiscard]] bool json_from(JsonValue&& into, const std::chrono::duration<Rep, Period>& x) {
     tolstoy::String<16> s;
     return std::move(into).emit_raw(s << x);
 }
 
 template <typename Clock, typename Dur>
-[[nodiscard]] bool json_from(JsonValue&& into, const std::chrono::time_point<Clock, Dur>& x)
-{
+[[nodiscard]] bool json_from(JsonValue&& into, const std::chrono::time_point<Clock, Dur>& x) {
     return json_from(std::move(into), x.time_since_epoch());
 }
 
@@ -508,8 +464,7 @@ template <typename M>
         { m.rows() } -> std::integral;
         { m.cols() } -> std::integral;
     }
-[[nodiscard]] bool json_from(JsonValue&& into, const M& x)
-{
+[[nodiscard]] bool json_from(JsonValue&& into, const M& x) {
     using Idx       = decltype(std::declval<M>().rows() + std::declval<M>().cols());
     JsonArray outer = std::move(into).array();
     const Idx rows  = x.rows();
@@ -531,26 +486,22 @@ template <typename M>
 
 // variant, optional
 
-[[nodiscard]] inline bool json_from(JsonValue&& into, const std::monostate)
-{
+[[nodiscard]] inline bool json_from(JsonValue&& into, const std::monostate) {
     return std::move(into).emit_raw(JsonValue::literal_null);
 }
 
-[[nodiscard]] inline bool json_from(JsonValue&& into, const std::nullopt_t)
-{
+[[nodiscard]] inline bool json_from(JsonValue&& into, const std::nullopt_t) {
     return json_from(std::move(into), std::monostate{});
 }
 
 template <typename... Ts>
     requires(sizeof...(Ts) > 0) && (is_json_serializable<Ts> && ...)
-[[nodiscard]] bool json_from(JsonValue&& into, const std::variant<Ts...>& x)
-{
+[[nodiscard]] bool json_from(JsonValue&& into, const std::variant<Ts...>& x) {
     return std::visit([&into](const auto& v) -> bool { return json_from(std::move(into), v); }, x);
 }
 
 template <json_serializable T>
-[[nodiscard]] bool json_from(JsonValue&& into, const std::optional<T>& x)
-{
+[[nodiscard]] bool json_from(JsonValue&& into, const std::optional<T>& x) {
     return x ? json_from(std::move(into), *x) : json_from(std::move(into), std::monostate{});
 }
 
@@ -558,21 +509,18 @@ template <json_serializable T>
 
 template <std::ranges::range R>
     requires(is_json_serializable<std::iter_reference_t<std::ranges::iterator_t<R>>> && (!is_string<R>))
-[[nodiscard]] bool json_from(JsonValue&& into, R&& range)
-{
+[[nodiscard]] bool json_from(JsonValue&& into, R&& range) {
     JsonArray arr = std::move(into).array(); // NOLINT(*-const-correctness)  No, it cannot be const.
     return std::ranges::all_of(std::forward<R>(range), [&arr]<typename T>(T&& x) { return arr(std::forward<T>(x)); });
 }
 
 template <json_serializable T>
-[[nodiscard]] bool json_from(JsonValue&& into, const std::initializer_list<T> x)
-{
+[[nodiscard]] bool json_from(JsonValue&& into, const std::initializer_list<T> x) {
     return json_from(std::move(into), std::span{ x });
 }
 
 template <typename... Ts>
-[[nodiscard]] bool json_from(JsonValue&& into, const std::tuple<Ts...>& x)
-{
+[[nodiscard]] bool json_from(JsonValue&& into, const std::tuple<Ts...>& x) {
     JsonArray arr = std::move(into).array(); // NOLINT(*-const-correctness)  No, it cannot be const.
     return std::apply(
       [&arr]<typename... Args>(Args&&... args) {

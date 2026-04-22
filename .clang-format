@@ -1,12 +1,15 @@
 BasedOnStyle: Mozilla
 IndentWidth: 4
 ColumnLimit: 120
-Standard: Latest
+Standard: c++20
 IndentExternBlock: NoIndent
 AlwaysBreakAfterDefinitionReturnType: None
 BreakAfterReturnType: None
 SpaceAfterTemplateKeyword: true
 AllowShortFunctionsOnASingleLine: All
+AllowShortEnumsOnASingleLine: true
+AllowShortBlocksOnASingleLine: Empty
+BreakBeforeBraces: Attach
 AlignConsecutiveAssignments: true
 AlignConsecutiveBitFields: true
 AlignConsecutiveDeclarations: true

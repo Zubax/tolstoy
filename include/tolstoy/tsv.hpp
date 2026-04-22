@@ -32,8 +32,7 @@ namespace tolstoy::tsv {
 /// allocates on the heap for large captures. Embedded users who cannot afford heap allocation should supply
 /// their own fixed-footprint type-erased callable as WriterFn (or pass a lambda directly and rely on CTAD).
 template <std::size_t column_count, typename WriterFn = std::function<bool(std::string_view)>>
-class Tsv final
-{
+class Tsv final {
   public:
     /// The maximum number of characters per TSV table cell. This can be made a template parameter if necessary.
     static constexpr std::size_t cell_capacity = 128;
@@ -48,8 +47,7 @@ class Tsv final
     /// Creates a new instance and writes the TSV column header row immediately.
     /// Returns an empty option if the write was unsuccessful.
     [[nodiscard]] static std::optional<Tsv> make(WriterFn                                          dst,
-                                                 const std::array<std::string_view, column_count>& column_names)
-    {
+                                                 const std::array<std::string_view, column_count>& column_names) {
         if (Tsv result(std::move(dst)); result.row(column_names)) {
             return result;
         }
@@ -58,8 +56,7 @@ class Tsv final
 
     /// Nested containers such as arrays will be expanded automatically in the row major ordering.
     template <typename... A>
-    [[nodiscard]] bool row(A&&... args)
-    {
+    [[nodiscard]] bool row(A&&... args) {
         const auto result = expand<0>(std::forward<A>(args)...);
         static_assert(column_count == decltype(result)::index, "Column count mismatch");
         return result.success && dest_("\n");
@@ -71,21 +68,17 @@ class Tsv final
 
   private:
     explicit Tsv(WriterFn dest)
-      : dest_(std::move(dest))
-    {
-    }
+      : dest_(std::move(dest)) {}
 
     template <std::size_t idx>
-    struct EmitResult final
-    {
+    struct EmitResult final {
         static const constinit std::size_t index   = idx; // NOLINT(bugprone-dynamic-static-initializers)
         bool                               success = false;
     };
 
     template <std::size_t idx, typename H, typename... Ts>
         requires(sizeof...(Ts) > 0)
-    [[nodiscard]] auto expand(H&& hd, Ts&&... tl)
-    {
+    [[nodiscard]] auto expand(H&& hd, Ts&&... tl) {
         const auto res_head = emit<idx>(std::forward<H>(hd));
         using Result        = decltype(expand<decltype(res_head)::index>(std::forward<Ts>(tl)...));
         Result out{ false };
@@ -95,15 +88,13 @@ class Tsv final
         return out;
     }
     template <std::size_t idx, typename H>
-    [[nodiscard]] auto expand(H&& hd)
-    {
+    [[nodiscard]] auto expand(H&& hd) {
         return emit<idx>(std::forward<H>(hd));
     }
 
     template <std::size_t idx, typename T>
         requires((!std::integral<T>) && (!std::floating_point<T>))
-    auto emit(const T& val)
-    {
+    auto emit(const T& val) {
         tolstoy::String<cell_capacity> conv;
         if constexpr (requires { std::string_view(val); }) {
             conv << "\"" << val << "\"";
@@ -113,22 +104,19 @@ class Tsv final
         return EmitResult<idx + 1>{ (!conv.full()) && sep<idx>() && dest_(conv) };
     }
     template <std::size_t idx, std::integral T>
-    auto emit(const T& val)
-    {
+    auto emit(const T& val) {
         const IntAsString<T> conv(val);
         return EmitResult<idx + 1>{ sep<idx>() && dest_(conv) };
     }
     template <std::size_t idx, std::floating_point T>
-    auto emit(const T& val)
-    {
+    auto emit(const T& val) {
         const FloatAsString<T> conv(val);
         return EmitResult<idx + 1>{ sep<idx>() && dest_(conv) };
     }
 
     // Expand array into separate columns in the row major order.
     template <std::size_t idx, std::size_t S, typename E>
-    [[nodiscard]] auto emit(const std::array<E, S>& val)
-    {
+    [[nodiscard]] auto emit(const std::array<E, S>& val) {
         return emit<idx, S, E>(val.data());
     }
 
@@ -151,8 +139,7 @@ class Tsv final
     }
 
     template <std::size_t idx, typename... Ts>
-    [[nodiscard]] auto emit(const std::variant<Ts...>& val)
-    {
+    [[nodiscard]] auto emit(const std::variant<Ts...>& val) {
         return std::visit([this](const auto& x) { return this->emit<idx>(x); }, val);
     }
 
